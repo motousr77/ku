@@ -4,14 +4,15 @@
 kind: Pod
 apiVersion: v1
 metadata:
-  name: pod-using-nfs
+  name: pod-use-nfs
 spec:
   # Add the server as an NFS volume for the pod
   volumes:
     - name: nfs-volume
       nfs: 
         # URL for the NFS server
-        server: 10.108.211.244 # Change this!
+        # kubectl get svc nfs-service -o json | jq '.spec.clusterIP'
+        server: 10.106.159.130 # Change this!
         path: /
 
   # In this container, we'll mount the NFS volume
