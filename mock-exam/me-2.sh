@@ -7,7 +7,7 @@ ETCDCTL_API=3 etcdctl --endpoints=https://[172.17.0.66]:2379 \
 --key=/etc/kubernetes/pki/etcd/server.key \
 snapshot save /tmp/etcd-backup.db
 
-# 2. Create a Pod called redis-storage with with a Volume of type emptyDir that lasts for the life of the Pod. Specs on the right.
+# 2. Create a Pod called redis-storage with with a Volume of type emptyDir that lasts for the life of the Pod.
 cat > redis-storage-def.yaml << EOF
 apiVersion: v1
 kind: Pod
@@ -27,9 +27,9 @@ spec:
 EOF
 
 # 3. Create a new pod called super-user-pod with image busybox:1.28.
-kubectl run nginx --image=nginx --command -- <cmd> <arg1> ... <argN>
+# kubectl run nginx --image=nginx --command -- <cmd> <arg1> ... <argN>
 kubectl run --generator=run-pod/v1 super-user-pod --image=busybox:1.28 --command -- sleep 4800 --dry-run -o yaml > super-user-pod-def.yaml
-# -- // --
+# ---
 cat > super-user-pod-def.yaml << EOF
 apiVersion: v1
 kind: Pod
@@ -55,7 +55,6 @@ spec:
 status: {}
 EOF
 
-
 # 4. A pod definition file is created at /root/use-pv.yaml. 
 cat > pv-def.yaml << EOF
 apiVersion: v1
@@ -71,7 +70,7 @@ spec:
   hostPath:
     path: /tmp/data
 EOF
-#
+# ---
 cat > my-pvc-def.yaml << EOF
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -119,8 +118,7 @@ Ensure the pod is running and the PV is bound.
     pod using the correct mountPath
     pod using the persistent volume claim
 
-# ------------       - - - -- - - -
-
+# --- --- --- --- --- --- --- --- --- --- --- --- #
 apiVersion: v1
 kind: Pod
 metadata:
@@ -136,7 +134,7 @@ spec:
         - SYS_NICE
         drop:
         - KILL
-
+# --- --- --- --- --- --- --- --- --- --- --- --- #
 etcd
 --advertise-client-urls=https://172.17.0.73:2379
 --cert-file=/etc/kubernetes/pki/etcd/server.crt
