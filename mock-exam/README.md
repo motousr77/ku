@@ -43,3 +43,5 @@ https://kubernetes.io/docs/concepts/storage/volumes/
 https://matthewpalmer.net/kubernetes-app-developer/articles/kubernetes-volumes-example-nfs-persistent-volume.html
 https://github.com/fauria/docker-vsftpd
 https://github.com/aledv/kubernetes-ftp
+<!-- External Port for k8s -->
+https://stackoverflow.com/questions/39293441/needed-ports-for-kubernetes-cluster

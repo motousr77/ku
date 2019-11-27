@@ -53,14 +53,6 @@ status: {}
 EOF
 
 # 4. A pod definition file is created at /root/use-pv.yaml. 
-A pod definition file is created at /root/use-pv.yaml.
-Make use of this manifest file and mount the persistent volume called pv-1.
-Ensure the pod is running and the PV is bound.
-mountPath: /data persistentVolumeClaim Name: my-pvc
-    persistentVolume Claim configured correctly
-    pod using the correct mountPath
-    pod using the persistent volume claim? 
----
 cat > pv-1-def.yaml << EOF
 apiVersion: v1
 kind: PersistentVolume
@@ -108,15 +100,9 @@ spec:
   dnsPolicy: ClusterFirst
   restartPolicy: Always
 EOF
-# ---
-Make use of this manifest file and mount the persistent volume called pv-1.
-Ensure the pod is running and the PV is bound.
+# 5. 
 
-    mountPath: /data persistentVolumeClaim 
-    Name: my-pvc
-    persistentVolume Claim configured correctly
-    pod using the correct mountPath
-    pod using the persistent volume claim
+
 
 # --- --- --- --- --- --- --- --- --- --- --- --- #
 apiVersion: v1

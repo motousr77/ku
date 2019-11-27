@@ -31,7 +31,7 @@ spec:
       # this field is optional
       type: Directory
 EOF
-#
+# ---
 cat > pv-log-def.yaml << EOF
 apiVersion: v1
 kind: PersistentVolume
