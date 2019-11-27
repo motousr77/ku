@@ -46,3 +46,13 @@ kubectl get svc <svc-name> -o json | jq '.spec.clusterIP'
   "show_line_endings": true,
   "preview_on_click": false
 }
+--- bashrs - vagrant/master-1 - alias ---
+alias h='history'
+alias hc='history -c'
+alias k='kubectl'
+alias kaf='kubectl apply -f'
+alias kow='kubectl -o wide get all'
+alias p='python3'
+alias pip='pip3'
+alias ssh_1='ssh -F /home/vagrant/machines-ssh/config worker-1'
+alias ssh_2='ssh -F /home/vagrant/machines-ssh/config worker-2'

@@ -16,6 +16,7 @@ http://kubernetesbyexample.com/
 <!-- https://www.digitalocean.com/community/tutorials/openssl-essentials-working-with-ssl-certificates-private-keys-and-csrs -->
 <!-- Kubernetes Fundamentals (LFS258) -->
 https://training.linuxfoundation.org/training/kubernetes-fundamentals/
+<!--  -->
 Course Outline
 - Chapter 1. Course Introduction
 - Chapter 2. Basics of Kubernetes

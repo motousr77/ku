@@ -1,7 +1,7 @@
 # 1. GO MOCK
 kubectl -n kube-system describe pod etcd-master
 # Take a backup of the etcd cluster and save it to /tmp/etcd-backup.db
-ETCDCTL_API=3 etcdctl --endpoints=https://[172.17.0.10]:2379 \
+ETCDCTL_API=3 etcdctl --endpoints=https://[172.17.0.35]:2379 \
 --cacert=/etc/kubernetes/pki/etcd/ca.crt \
 --cert=/etc/kubernetes/pki/etcd/server.crt \
 --key=/etc/kubernetes/pki/etcd/server.key \
@@ -51,9 +51,9 @@ spec:
   restartPolicy: Always
 status: {}
 EOF
-
+---
 # 4. A pod definition file is created at /root/use-pv.yaml. 
-cat > pv-1-def.yaml << EOF
+cat > pv-1.yaml << EOF
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -67,7 +67,7 @@ spec:
   hostPath:
     path: /tmp/data
 EOF
-cat > pv-1-claim-def.yaml << EOF
+cat > pv-1-claim.yaml << EOF
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -79,6 +79,7 @@ spec:
     requests:
       storage: 200Mi
 EOF
+---
 cat > use-pv.yaml << EOF
 apiVersion: v1
 kind: Pod
@@ -88,7 +89,7 @@ metadata:
   name: use-pv
 spec:
   volumes:
-    - name: pv-storage
+    - name: pv-1 # ??
       persistentVolumeClaim:
         claimName: pv-1-claim
   containers:
@@ -96,11 +97,32 @@ spec:
     name: use-pv
     volumeMounts:
       - mountPath: /data
-        name: pv-storage
+        name: pv-1 # ??
   dnsPolicy: ClusterFirst
   restartPolicy: Always
 EOF
-# 5. 
+---
+5. Create a new deployment called nginx-deploy, with image nginx:1.16 and 1 replica. Record the version. Next upgrade the deployment to version 1.17 using rolling update.
+kubectl run nginx-deploy --image=nginx:1.16 --replicas=1
+kubectl set image deployment/nginx-deploy nginx-deploy=nginx:1.17 --record
+# kubectl rollout status deployment/nginx-deploy # .apps/ !!!
+---
+6. Create a new user called john. Grant him access to the cluster. John should have permission to create, list, get, update and delete pods in the development namespace . The private key exists in the location: /root/john.key and csr at /root/john.csr
+CSR: john-developer Status:Approved
+Role Name: developer, namespace: development, Resource: Pods
+Access: User 'john' has appropriate permissions 
+
+7. Create an nginx pod called nginx-resolver using image nginx, expose it internally with a service called nginx-resolver-service. Test that you are able to look up the service and pod names from within the cluster. Use the image: busybox:1.28 for dns lookup. Record results in /root/nginx.svc and /root/nginx.pod
+Pod: nginx-resolver created
+Service DNS Resolution recorded correctly
+Pod DNS resolution recorded correctly
+
+8. Create a static pod on node01 called nginx-critical with image nginx. Create this pod on node01 and make sure that it is recreated/restarted automatically in case of a failure.
+Use /etc/kubernetes/manifests as the Static Pod path for example.
+Kubelet Configured for Static Pods
+Pod nginx-critical-node01 is Up and running
+
+
 
 
 
