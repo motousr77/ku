@@ -1,7 +1,7 @@
 # 1. GO MOCK
 kubectl -n kube-system describe pod etcd-master
 # Take a backup of the etcd cluster and save it to /tmp/etcd-backup.db
-ETCDCTL_API=3 etcdctl --endpoints=https://[172.17.0.66]:2379 \
+ETCDCTL_API=3 etcdctl --endpoints=https://[172.17.0.10]:2379 \
 --cacert=/etc/kubernetes/pki/etcd/ca.crt \
 --cert=/etc/kubernetes/pki/etcd/server.crt \
 --key=/etc/kubernetes/pki/etcd/server.key \
@@ -27,9 +27,6 @@ spec:
 EOF
 
 # 3. Create a new pod called super-user-pod with image busybox:1.28.
-# kubectl run nginx --image=nginx --command -- <cmd> <arg1> ... <argN>
-kubectl run --generator=run-pod/v1 super-user-pod --image=busybox:1.28 --command -- sleep 4800 --dry-run -o yaml > super-user-pod-def.yaml
-# ---
 cat > super-user-pod-def.yaml << EOF
 apiVersion: v1
 kind: Pod
@@ -56,13 +53,21 @@ status: {}
 EOF
 
 # 4. A pod definition file is created at /root/use-pv.yaml. 
-cat > pv-def.yaml << EOF
+A pod definition file is created at /root/use-pv.yaml.
+Make use of this manifest file and mount the persistent volume called pv-1.
+Ensure the pod is running and the PV is bound.
+mountPath: /data persistentVolumeClaim Name: my-pvc
+    persistentVolume Claim configured correctly
+    pod using the correct mountPath
+    pod using the persistent volume claim? 
+---
+cat > pv-1-def.yaml << EOF
 apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: pv-1
 spec:
-  storageClassName: manual
+  storageClassName: ""
   accessModes:
     - ReadWriteOnce
   capacity:
@@ -70,12 +75,11 @@ spec:
   hostPath:
     path: /tmp/data
 EOF
-# ---
-cat > my-pvc-def.yaml << EOF
+cat > pv-1-claim-def.yaml << EOF
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: my-pvc
+  name: pv-1-claim
 spec:
   accessModes:
     - ReadWriteOnce
@@ -83,12 +87,10 @@ spec:
     requests:
       storage: 200Mi
 EOF
-# /root/use-pv.yaml
 cat > use-pv.yaml << EOF
 apiVersion: v1
 kind: Pod
 metadata:
-  creationTimestamp: null
   labels:
     run: use-pv
   name: use-pv
@@ -96,17 +98,15 @@ spec:
   volumes:
     - name: pv-storage
       persistentVolumeClaim:
-        claimName: my-pvc
+        claimName: pv-1-claim
   containers:
   - image: nginx
     name: use-pv
-    resources: {}
     volumeMounts:
       - mountPath: /data
         name: pv-storage
   dnsPolicy: ClusterFirst
   restartPolicy: Always
-status: {}
 EOF
 # ---
 Make use of this manifest file and mount the persistent volume called pv-1.

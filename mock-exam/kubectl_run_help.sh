@@ -45,7 +45,7 @@ spec:
   hostPath:
     path: /pv/log
 EOF
-#
+# ReadWriteMany !!!
 cat > claim-log-1.yaml << EOF
 kind: PersistentVolumeClaim
 apiVersion: v1

@@ -38,3 +38,8 @@ https://hub.docker.com/repository/docker/devcodemy/hellops
 <!-- --- -->
 https://docs.docker.com/engine/reference/commandline/login/
 https://linuxize.com/post/using-the-ssh-config-file/
+<!-- Work With File Systems -->
+https://kubernetes.io/docs/concepts/storage/volumes/
+https://matthewpalmer.net/kubernetes-app-developer/articles/kubernetes-volumes-example-nfs-persistent-volume.html
+https://github.com/fauria/docker-vsftpd
+https://github.com/aledv/kubernetes-ftp
