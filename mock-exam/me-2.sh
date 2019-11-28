@@ -115,22 +115,110 @@ The private key exists in the location: /root/john.key and csr at /root/john.csr
     Role Name: developer, namespace: development, Resource: Pods
     Access: User 'john' has appropriate permissions 
 
+# 7. 
+Create an nginx pod called nginx-resolver using image nginx, expose it internally with a service called nginx-resolver-service. 
+Test that you are able to look up the service and pod names from within the cluster. 
+  Use the image: busybox:1.28 for dns lookup. 
+  Record results in /root/nginx.svc and /root/nginx.pod
+    Pod: nginx-resolver created
+    Service DNS Resolution recorded correctly
+    Pod DNS resolution recorded correctly
+#
+kubectl run --generator=run-pod/v1 --name=nginx-resolver --image= nginx
+kubectl expose nginx-resolver --name=nginx-resolver-service
+
+# sudo apt install dnsutils # dig <hostname> # host <hostname> #
+host example.com
+host -t TYPE example.com
+host -t a example.com
+host -t mx cyberciti.biz
+
+# 8. Create a static pod on node01 called nginx-critical with image nginx...
+kubectl run --generator=run-pod/v1 nginx-static-pod \
+--image=nginx --restart=OnFailure \
+--dry-run -o yaml > /etc/kubernetes/manifests/nginx-static-pod.yaml && \
+echo '  nodeName: node01' >> /etc/kubernetes/manifests/nginx-static-pod.yaml
+
+kubectl run --generator=run-pod/v1 nginx-static \
+--image=nginx --restart=OnFailure \
+--dry-run -o yaml > /etc/kubernetes/manifests/nginx-static.yaml && \
+echo '  nodeName: node01' >> /etc/kubernetes/manifests/nginx-static.yaml
+kubectl get pods -o wide
 
 
+kubectl get nodes -o jsonpath='{.items[1].metadata.name}'
 
-7. Create an nginx pod called nginx-resolver using image nginx, expose it internally with a service called nginx-resolver-service. Test that you are able to look up the service and pod names from within the cluster. Use the image: busybox:1.28 for dns lookup. Record results in /root/nginx.svc and /root/nginx.pod
-Pod: nginx-resolver created
-Service DNS Resolution recorded correctly
-Pod DNS resolution recorded correctly
+kubectl run --generator=run-pod/v1 nginx-critical-node01 --image=nginx --restart=OnFailure \
+--dry-run -o json | jq --arg foo $(kubectl get nodes -o jsonpath='{.items[1].metadata.name}') '. * {"spec": { nodeName: $foo } }' > /etc/kubernetes/manifests/nginx-critical-node01.json
 
-8. Create a static pod on node01 called nginx-critical with image nginx. Create this pod on node01 and make sure that it is recreated/restarted automatically in case of a failure.
-Use /etc/kubernetes/manifests as the Static Pod path for example.
-Kubelet Configured for Static Pods
-Pod nginx-critical-node01 is Up and running
+ПЕРВОЕ (статик)
+kubectl run --generator=run-pod/v1 nginx-01 --image=nginx --restart=OnFailure \
+--dry-run -o json | jq --arg foo $(kubectl get nodes -o jsonpath='{.items[1].metadata.name}') \
+'. * {"spec": { nodeName: $foo } }' > /etc/kubernetes/manifests/nginx-01.json
+
+ВТОРОЕ (НЕ статик)
+kubectl run --generator=run-pod/v1 nginx-eph --image=nginx --restart=OnFailure \
+--dry-run -o json | jq --arg foo $(kubectl get nodes -o jsonpath='{.items[1].metadata.name}') \
+'. * {"spec": { nodeName: $foo } }' > nginx-eph.json && \
+kubectl apply -f nginx-eph.json
+
+kubectl run --generator=run-pod/v1 nginx-eph --image=nginx:alpine --restart=OnFailure \
+--dry-run -o json | jq --arg foo $(kubectl get nodes -o jsonpath='{.items[1].metadata.name}') \
+'. * {"spec": { nodeName: $foo } }' > nginx-eph.json && \
+kubectl apply -f nginx-eph.json
+
+kubectl run --generator=run-pod/v1 nginx-eph --image=nginx:alpine --restart=OnFailure \
+--dry-run -o json | jq --arg foo $(kubectl get nodes -o jsonpath='{.items[2].metadata.name}') \
+'. * {"spec": { nodeName: $foo } }' > nginx-eph.json
+#
+kubectl apply -f nginx-eph.json
+# STATIC
+kubectl run --generator=run-pod/v1 nginx-01 --image=nginx --restart=OnFailure \
+--dry-run -o json | jq --arg foo node2 \
+'. * {"spec": { nodeName: $foo } }' > /etc/kubernetes/manifests/nginx-01.json
+# EPH
+kubectl run --generator=run-pod/v1 nginx-eph --image=nginx:alpine --restart=OnFailure \
+--dry-run -o json | jq --arg foo node2 \
+'. * {"spec": { nodeName: $foo } }' > nginx-eph.json
+#
+kubectl apply -f nginx-eph.json
 
 
+rm /etc/kubernetes/manifests/nginx*
+
+kubectl run --generator=run-pod/v1 nginx-critical-node01 \
+--image=nginx --restart=OnFailure --dry-run -o json | jq --arg foo node01 '. * {"spec": { nodeName: $foo } }' > /etc/kubernetes/manifests/nginx-critical-node01.json
 
 
+kubectl run --generator=run-pod/v1 nginx-test \
+--image=nginx --restart=OnFailure --dry-run -o json | jq --arg foo node01 '. * {"spec": { nodeName: $foo } }' > /etc/kubernetes/manifests/nginx-test.json
+
+
+kubectl run --generator=run-pod/v1 nginx-test \
+--image=nginx --restart=OnFailure --dry-run -o json | jq --arg foo node01 '. * {"spec": { nodeName: $foo } }' > nginx-test.json && \
+kubectl apply -f nginx-test.json
+
+#
+kubectl run --generator=run-pod/v1 nginx-critical-node01 \
+--image=nginx --restart=OnFailure \ --dry-run -o json | jq \
+--arg foo node01 '. * {"spec": { nodeName: $foo } }' > nginx-critical-node01.json && \
+kubectl apply -f nginx-critical-node01.json
+#
+kubectl run --generator=run-pod/v1 test \
+--image=nginx --dry-run -o json | jq \
+--arg foo node01 '. * {"spec": { nodeName: $foo } }'> test.json && \
+kubectl apply -f test.json
+
+kubectl run --generator=run-pod/v1 nginx-pod \
+--image=nginx --dry-run -o yaml > nginx-pod.yaml && \
+echo '  nodeName: node01' >> nginx-pod.yaml && \
+kubectl apply -f nginx-pod.yaml
+
+# kubectl run --generator=run-pod/v1 nginx-pod --image=nginx --dry-run -o json > test.json
+kubectl run --generator=run-pod/v1 test \
+--image=nginx --dry-run -o json | jq \
+--arg foo node01 '. * {"spec": { nodeName: $foo } }'> test.json && \
+kubectl apply -f test.json
 
 # --- --- --- --- --- --- --- --- --- --- --- --- #
 apiVersion: v1
