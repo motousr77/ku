@@ -87,6 +87,27 @@ spec:
     persistentVolumeClaim:
       claimName: claim-log-1
 EOF
+kubectl apply -f webapp-new-def.yaml
+
+
+
+kubectl exec -it ubuntu-sleeper -- date -s '19 APR 2012 11:14:00'
+#
+containers:
+  - name: _
+    image:
+    securityContext:
+      capabilities:
+        add:
+          - SYS_TIME
+
+# may delete after insert security cintent to container!
+securityContext:
+  runAsUser: 1010
+
+#
+kubectl get pod ubuntu-sleeper -o=jsonpath='{.spec.serviceAccount}'
+
 
 master $ kubectl run --generator=run-pod/v1
 Error: required flag(s) "image" not set
