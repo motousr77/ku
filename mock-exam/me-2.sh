@@ -51,6 +51,24 @@ EOF
 kubectl apply -f super-user-pod.yaml
 
 # 4. A pod definition file is created at /root/use-pv.yaml ...
+# pv-1 is allready created!!!
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-1
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Mi
+  hostPath:
+    path: /opt/data
+    type: ""
+  persistentVolumeReclaimPolicy: Retain
+  volumeMode: Filesystem
+status:
+  phase: Available
+---
 cat > pv-1.yaml << EOF
 apiVersion: v1
 kind: PersistentVolume
@@ -65,7 +83,9 @@ spec:
   hostPath:
     path: /tmp/data
 EOF
+# recreate !!!
 kubectl apply -f pv-1.yaml 
+# 
 cat > pv-1-claim.yaml << EOF
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -76,8 +96,9 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 200Mi
+      storage: 10Mi
 EOF
+# must be pv
 kubectl apply -f pv-1-claim.yaml 
 cat > use-pv.yaml << EOF
 apiVersion: v1
@@ -88,7 +109,7 @@ metadata:
   name: use-pv
 spec:
   volumes:
-    - name: pv-1 # ??
+    - name: pv-1
       persistentVolumeClaim:
         claimName: pv-1-claim
   containers:
@@ -96,36 +117,49 @@ spec:
     name: use-pv
     volumeMounts:
       - mountPath: /data
-        name: pv-1 # ??
+        name: pv-1
   dnsPolicy: ClusterFirst
   restartPolicy: Always
 EOF
 kubectl apply -f use-pv.yaml
+# Add a persistentVolumeClaim definition to pod definition file
 
 # 5. Create a new deployment called nginx-deploy, with image nginx:1.16 and 1 replica. Record the version. Next upgrade the deployment to version 1.17 using rolling update.
 kubectl run nginx-deploy --image=nginx:1.16 --replicas=1
+# kubectl rollout history deployment/nginx-deploy
 kubectl set image deployment/nginx-deploy nginx-deploy=nginx:1.17 --record
 # kubectl rollout status deployment/nginx-deploy # .apps/ !!!
+# kubectl rollout undo deployment nginx-deploy
 
-# 6. 
-Create a new user called john. Grant him access to the cluster. 
-John should have permission to create, list, get, update and delete pods in the development namespace. 
-The private key exists in the location: /root/john.key and csr at /root/john.csr
-    CSR: john-developer Status:Approved
-    Role Name: developer, namespace: development, Resource: Pods
-    Access: User 'john' has appropriate permissions 
-
-# 7. 
-Create an nginx pod called nginx-resolver using image nginx, expose it internally with a service called nginx-resolver-service. 
-Test that you are able to look up the service and pod names from within the cluster. 
-  Use the image: busybox:1.28 for dns lookup. 
-  Record results in /root/nginx.svc and /root/nginx.pod
-    Pod: nginx-resolver created
-    Service DNS Resolution recorded correctly
-    Pod DNS resolution recorded correctly
+# 6. Create a new user called john. Grant him access to the cluster...
+# kubectl api-versions | grep cert
+# use ENV for new user ! (in future commits)
+cat <<EOF | kubectl apply -f -
+apiVersion: certificates.k8s.io/v1beta1
+kind: CertificateSigningRequest
+metadata:
+  name: john-developer
+spec:
+  request: $(cat john.csr | base64 | tr -d '\n')
+  usages:
+  - digital signature
+  - key encipherment
+  - server auth
+EOF
+--- 
+# use ENV for user !!! example:  export NEW_USR=john-developer
+kubectl certificate approve john-developer
 #
-kubectl run --generator=run-pod/v1 --name=nginx-resolver --image= nginx
-kubectl expose nginx-resolver --name=nginx-resolver-service
+kubectl create role developer --resource=pods --verb=create,get,list,update,delete \
+--namespace=development
+kubectl create rolebinding developer-role-binding --role=developer \
+--user=john --namespace=development
+# kubectl -n development describe rolebinding developer-role-binding
+
+# 7. Create an nginx pod called nginx-resolver using image nginx, expose it ...
+kubectl run --generator=run-pod/v1 nginx-resolver --image=nginx
+kubectl expose pod nginx-resolver --name=nginx-resolver-service \
+--port=80 --target-port=80 --type=ClusterIP
 
 # sudo apt install dnsutils # dig <hostname> # host <hostname> #
 host example.com
@@ -134,17 +168,25 @@ host -t a example.com
 host -t mx cyberciti.biz
 
 # 8. Create a static pod on node01 called nginx-critical with image nginx...
+# Goto NODE01 by ssh or scp to node01 !!!
+kubectl run --generator=run-pod/v1 nginx-critical --image=nginx --restart=OnFailure \
+--dry-run -o json | jq --arg foo $(kubectl get nodes -o jsonpath='{.items[1].metadata.name}') \
+'. * {"spec": { nodeName: $foo } }' > nginx-critical.json && \
+ssh node01 mkdir /etc/kubernetes/manifests && \
+scp master:~/nginx-critical.json node01:/etc/kubernetes/manifests/
+# !!! correct :)
+# Add --pod-manifest-path to kubelet service on worker or staticPodPath in the kubelet config.yaml
+
 kubectl run --generator=run-pod/v1 nginx-static-pod \
 --image=nginx --restart=OnFailure \
 --dry-run -o yaml > /etc/kubernetes/manifests/nginx-static-pod.yaml && \
-echo '  nodeName: node01' >> /etc/kubernetes/manifests/nginx-static-pod.yaml
+echo '  nodeName: node01' > /etc/kubernetes/manifests/nginx-static-pod.yaml
 
 kubectl run --generator=run-pod/v1 nginx-static \
 --image=nginx --restart=OnFailure \
 --dry-run -o yaml > /etc/kubernetes/manifests/nginx-static.yaml && \
-echo '  nodeName: node01' >> /etc/kubernetes/manifests/nginx-static.yaml
+echo '  nodeName: node01' > /etc/kubernetes/manifests/nginx-static.yaml
 kubectl get pods -o wide
-
 
 kubectl get nodes -o jsonpath='{.items[1].metadata.name}'
 
@@ -183,16 +225,13 @@ kubectl run --generator=run-pod/v1 nginx-eph --image=nginx:alpine --restart=OnFa
 #
 kubectl apply -f nginx-eph.json
 
-
 rm /etc/kubernetes/manifests/nginx*
 
 kubectl run --generator=run-pod/v1 nginx-critical-node01 \
 --image=nginx --restart=OnFailure --dry-run -o json | jq --arg foo node01 '. * {"spec": { nodeName: $foo } }' > /etc/kubernetes/manifests/nginx-critical-node01.json
 
-
 kubectl run --generator=run-pod/v1 nginx-test \
 --image=nginx --restart=OnFailure --dry-run -o json | jq --arg foo node01 '. * {"spec": { nodeName: $foo } }' > /etc/kubernetes/manifests/nginx-test.json
-
 
 kubectl run --generator=run-pod/v1 nginx-test \
 --image=nginx --restart=OnFailure --dry-run -o json | jq --arg foo node01 '. * {"spec": { nodeName: $foo } }' > nginx-test.json && \
@@ -221,6 +260,7 @@ kubectl run --generator=run-pod/v1 test \
 kubectl apply -f test.json
 
 # --- --- --- --- --- --- --- --- --- --- --- --- #
+# --- --- --- --- --- --- --- --- --- --- --- --- #
 apiVersion: v1
 kind: Pod
 metadata:
@@ -236,6 +276,7 @@ spec:
         - SYS_NICE
         drop:
         - KILL
+# --- --- --- --- --- --- --- --- --- --- --- --- #
 # --- --- --- --- --- --- --- --- --- --- --- --- #
 etcd
 --advertise-client-urls=https://172.17.0.73:2379
@@ -254,9 +295,6 @@ etcd
 --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
 --snapshot-count=10000
 --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
-
-
-
 
 #  FROM LABS -> 
 # 1 Take a backup of the etcd cluster and save it to /tmp/etcd-backup.db
