@@ -1,75 +1,92 @@
-# 1.
-Create a new service account with the name pvviewer. Grant this Service account access to list all PersistentVolumes in the cluster by creating an appropriate cluster role called pvviewer-role and ClusterRoleBinding called pvviewer-role-binding.
-Next, create a pod called pvviewer with the image: redis and serviceAccount: pvviewer in the default namespace
-    ServiceAccount: pvviewer
-    ClusterRole: pvviewer-role
-    ClusterRoleBinding: pvviewer-role-binding
-    Pod: pvviewer
-    Pod configured to use ServiceAccount pvviewer
+# 1. Create a new service account with the name pvviewer...
+kubectl create sa pvviewer && kubectl create clusterrole pvviewer-role --resource=persistentvolumes --verb=list
+kubectl create clusterrolebinding pvviewer-role-binding --clusterrole=pvviewer-role --serviceaccount=default:pvviewer
+#
+cat << EOF | kubectl create -f -
+$(kubectl run --generator=run-pod/v1 pvviewer --image=redis --dry-run \
+-o json |jq --arg foo pvviewer '.*{"spec":{serviceAccountName: $foo}}')
+EOF
 
-# 2. 
-List the InternalIP of all nodes of the cluster. Save the result to a file /root/node_ips
-Answer should be in the format: InternalIP of master<space>InternalIP of node1<space>InternalIP of node2<space>InternalIP of node3 (in a single line)
-    Task Completed
+# 2. List the InternalIP of all nodes of the cluster. Save the result to a file /root/node_ips
+kubectl get nodes -o=jsonpath='{.items[*].status.addresses[].address}' > /root/node_ips
 
-# 3.
-Create a pod called multi-pod with two containers.
-Container 1, name: alpha, image: nginx
-Container 2: beta, image: busybox, command sleep 4800.
----
-Environment Variables:
-Container 1:
-name: alpha
-Container 2:
-name: beta
+# 3. Create a pod called multi-pod with two containers...
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-pod
+spec:
+  containers:
+  - name: alpha
+    image: nginx
+    env:
+    - name: name
+      value: alpha
+  - name: beta
+    image: busybox
+    env:
+    - name: name
+      value: beta
+    command: ["sleep", "4800"]
+EOF
 
-    Pod Name: multi-pod
-    Container 1: alpha
-    Container 2: beta
-    Container beta commands set correctly?
-    Container 1 Environment Value Set
-    Container 2 Environment Value Set
+# 4. Create a Pod called non-root-pod , image: redis:alpine, runAsUser: 1000, fsGroup: 2000
+cat <<EOF | kubectl apply -f -
+$(kubectl run --generator=run-pod/v1 non-root-pod --image=redis:alpine --dry-run \
+-o json | jq '.*{"spec": {"securityContext": {"runAsUser": 1000, "fsGroup": 2000}}}')
+EOF
 
-# 4.
-Create a Pod called non-root-pod , image: redis:alpine
-runAsUser: 1000
-fsGroup: 2000
-    Pod `non-root-pod` fsGroup configured
-    Pod `non-root-pod` runAsUser configured 
+# 5. Create NetworkPolicy...
+cat <<EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-to-nptest
+spec:
+  podSelector:
+    matchLabels:
+      run: np-test-1
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    ports:
+    - protocol: TCP
+      port: 80
+EOF
 
-# 5.
-We have deployed a new pod called np-test-1 and a service called np-test-service. Incoming connections to this service are not working. Troubleshoot and fix it.
-Create NetworkPolicy, by the name ingress-to-nptest that allows incoming connections to the service over port 80
-Important: Do not delete any current objects deployed.
-    Important: Do not Alter Existing Objects!
-    NetworkPolicy: Applied to All sources (Incoming traffic from all pods)?
-    NetWorkPolicy: Correct Port?
-    NetWorkPolicy: Applied to correct Pod?
+# 6.Taint the worker node node01 to be Unschedulable. 
+kubectl taint nodes node01 key=value:NoSchedule
+kubectl run --generator=run-pod/v1 dev-redis --image=redis:alpine --overrides='{"spec": {"nodeSelector": {"kubernetes.io/hostname": "node01"}}}'
+#
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: prod-redis
+spec:
+  containers:
+  - name: prod-redis
+    image: redis:alpine
+  tolerations:
+  - key: key
+    value: production
+    operator: Equal
+    effect: NoSchedule
+EOF
+# kubectl get no node01 -o=jsonpath='{.spec.taints}'
 
-# 6.
-Taint the worker node node01 to be Unschedulable. 
-Once done, create a pod called dev-redis, image redis:alpine to ensure workloads are not scheduled to this worker node. 
-Finally, create a new pod called prod-redis and image redis:alpine with toleration to be scheduled on node01.
-key:env_type, value:production and operator:NoSchedule
-    Key = env_type
-    Value = production
-    Effect = NoSchedule
-    pod 'dev-redis' (no tolerations) is not scheduled on node01?
-    Create a pod 'prod-redis' to run on node01 
+# 7. Create a pod called hr-pod in hr namespace belonging to the production environment and frontend tier.
+kubectl create ns hr
+kubectl run --generator=run-pod/v1 hr-pod --namespace=hr --image=redis:alpine --labels="tier=frontend,environment=production" -o yaml > hr-pod-gen.yaml
 
-# 7.
-Create a pod called hr-pod in hr namespace belonging to the production environment and frontend tier .
-image: redis:alpine
-Use appropriate labels and create all the required objects if it does not exist in the system already.
-    hr-pod labeled with environment production?
-    hr-pod labeled with frontend tier?
+# 8. 
+sed -i 's/:2379/:6443/g' /root/super.kubeconfig
+kubectl cluster-info --kubeconfig=/root/super.kubeconfig
 
-# 8.
-A kubeconfig file called super.kubeconfig has been created in /root. There is something wrong with the configuration. Troubleshoot and fix it.
-    Fix /root/super.kubeconfig 
+# 9. We have created a new deployment called nginx-deploy. scale the deployment to 3 replicas.
+kubectl scale deployment nginx-deploy --replicas=3
+sed -i 's/contro1ler/controller/g' /etc/kubernetes/manifests/kube-controller-manager.yaml 
 
-# 9.
-We have created a new deployment called nginx-deploy. scale the deployment to 3 replicas. 
-Has the replicas increased. Troubleshoot the issue and fix it.
-    Deployment has 3 replicas 
-
+# Done.

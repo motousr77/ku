@@ -20,10 +20,7 @@ As a non-production quick start, to install Calico with a single-node dedicated 
 # init under ROOT or use SUDO
 kubeadm init --apiserver-advertise-address=192.168.6.11 --pod-network-cidr=172.16.0.0/16
 
-
-
 kubeadm init --apiserver-advertise-address=$(hostname -i) --pod-network-cidr=172.16.0.0/16
-
 #
 mkdir -p $HOME/.kube && \
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config && \
