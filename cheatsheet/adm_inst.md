@@ -25,6 +25,9 @@ sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubun
 sudo apt-get install docker-ce=<VERSION_STRING> docker-ce-cli=<VERSION_STRING> containerd.io
 ~~~
 ~~~sh
+sudo apt install docker-ce=18.06.3~ce~3-0~ubuntu containerd.io
+~~~
+~~~sh
 sudo apt-get install docker-ce=18.06.3~ce~3-0~ubuntu containerd.io
 ~~~
 
@@ -92,3 +95,27 @@ mkdir -p /etc/systemd/system/docker.service.d
 # Restart docker.
 systemctl daemon-reload
 systemctl restart docker
+
+##### Copy ca.crt from master-1 to master-2
+scp -F config-ssh.txt master-1:/etc/kubernetes/pki/ca.crt $(pwd)
+scp -F config-ssh.txt ca.crt master-2:/home/vagrant
+
+##### Create bootstraptoken
+<!-- cat > bootstrap-token-07401b.yaml <<EOF -->
+~~~sh
+# 7g6afz.06lnx0rrluxtpw4x
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bootstrap-token-7g6afz
+  namespace: kube-system
+type: bootstrap.kubernetes.io/token
+  token-id: 7g6afz
+  token-secret: 06lnx0rrluxtpw4x
+  expiration: 2021-03-10T03:22:11Z
+  usage-bootstrap-authentication: "true"
+  usage-bootstrap-signing: "true"
+  auth-extra-groups: system:bootstrappers:master
+EOF
+~~~
