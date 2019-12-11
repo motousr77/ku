@@ -68,3 +68,4 @@ vagrant@master-1:~$
 kubectl port-forward -n demo demo-grafana  9090
 
 kubectl port-forward $(kubectl get pods --selector=app=grafana --output=jsonpath="{.items..metadata.name}") 3000
+
