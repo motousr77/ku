@@ -77,6 +77,3 @@ openssl x509 -in /etc/kubernetes/pki/ca.crt -text -noout | egrep 'after|before' 
 /etc/kubernetes/pki/ca.crt
 
 openssl x509 -req -in /etc/kubernetes/pki/apiserver-etcd-client.csr -CA /etc/kubernetes/pki/etcd/ca.crt -CAkey /etc/kubernetes/pki/etcd/ca.key -CAcreateserial -out /etc/kubernetes/pki/apiserver-etcd-client.crt
-
-
-
