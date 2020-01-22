@@ -1,3 +1,5 @@
+TEST GitHub -> Slack !!!
+
 You just have to enter the command:
 
 source ~/.bashrc
